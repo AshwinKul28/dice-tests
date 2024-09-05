@@ -1,0 +1,62 @@
+#!/bin/bash
+
+# Define variables
+SERVER_PORT=7379
+SERVER_CMD="air"
+TEST_CMD="./runtest --host 127.0.0.1 --port $SERVER_PORT --tags -needs:debug --tags -cluster:skip"
+SERVER_PID_FILE="server.pid"
+
+# Check if directory path is passed as an argument
+if [ -z "$1" ]; then
+  echo "Error: No directory path provided."
+  exit 1
+fi
+
+# Check if the directory exists
+if [ ! -d "$1" ]; then
+  echo "Error: Directory '$1' does not exist."
+  exit 1
+fi
+
+# Navigate to the provided directory
+cd "$1" || exit
+
+# Start the Go server in the background
+echo "Starting the server..."
+# Enable TCL_TESTS
+export TCL_TESTS=true
+# Check if the 'air' command exists
+if ! command -v air &> /dev/null; then
+  echo "'air' command not found, running 'go run main.go' instead..."
+  go run main.go &
+  SERVER_PID=$!
+else
+  echo "'air' command found, running 'air'..."
+  $SERVER_CMD &
+  SERVER_PID=$!
+fi
+
+# Save the server PID to a file for later use
+echo $SERVER_PID > $SERVER_PID_FILE
+cat $SERVER_PID_FILE
+
+# Wait for the server to start
+echo "Waiting for the server to start..."
+sleep 5  # Adjust this sleep duration based on how long the server takes to start
+
+# Run the tests
+echo "Running tests..."
+$TEST_CMD
+
+# Capture the exit code of the test command
+TEST_EXIT_CODE=$?
+
+# Stop the server
+echo "Stopping the server..."
+kill $SERVER_PID
+
+# Remove the server PID file
+rm -f $SERVER_PID_FILE
+
+# Exit with the same code as the test command
+exit 0
