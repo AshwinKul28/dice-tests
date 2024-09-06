@@ -507,7 +507,15 @@ if {!$::tls} { ;# fake_redis_node doesn't support TLS
         # Verify the members of the new set
         set smembers_output [exec {*}$cmdline SMEMBERS set]
         puts "SMEMBERS new_set output: $smembers_output"
-        assert_equal "1\n2\n3\n4\n5\n6" $smembers_output
+        set expected_output "1\n2\n3\n4\n5\n6"
+        # Since the order is not maintained in SMEMBERS need to sort them and then compare
+        set smembers_list [split $smembers_output "\n"]
+        set expected_list [split $expected_output "\n"]
+        # Sort both lists and store the result
+        set smembers_list [lsort $smembers_list]
+        set expected_list [lsort $expected_list]
+        # Assert that the sorted lists are equal
+        assert_equal $expected_list $smembers_list
     }
 
     # **************************************************************************
