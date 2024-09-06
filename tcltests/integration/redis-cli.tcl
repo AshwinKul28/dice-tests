@@ -370,12 +370,6 @@ start_server {tags {"cli"}} {
         assert_equal "\"foo\"" [run_command $fd "get key"]
     }
 
-    # test_interactive_cli "Multi-bulk reply" {
-    #     r rpush list foo
-    #     r rpush list bar
-    #     assert_equal "1) \"foo\"\n2) \"bar\"" [run_command $fd "lrange list 0 -1"]
-    # }
-
     test_interactive_cli "Parsing quotes" {
         assert_equal "OK" [run_command $fd "set key \"bar\""]
         assert_equal "bar" [r get key]
@@ -395,83 +389,6 @@ start_server {tags {"cli"}} {
         assert_equal "bar" [r get key]
     }
 
-    test_interactive_cli "Subscribed mode" {
-        if {$::force_resp3} {
-            run_command $fd "hello 3"
-        }
-
-        set reading "Reading messages... (press Ctrl-C to quit or any key to type command)\r"
-        set erase "\033\[K"; # Erases the "Reading messages..." line.
-
-        # Subscribe to some channels.
-        set sub1 "1) \"subscribe\"\n2) \"ch1\"\n3) (integer) 1\n"
-        set sub2 "1) \"subscribe\"\n2) \"ch2\"\n3) (integer) 2\n"
-        set sub3 "1) \"subscribe\"\n2) \"ch3\"\n3) (integer) 3\n"
-        assert_equal $sub1$sub2$sub3$reading \
-            [run_command $fd "subscribe ch1 ch2 ch3"]
-
-        # Receive pubsub message.
-        r publish ch2 hello
-        set message "1) \"message\"\n2) \"ch2\"\n3) \"hello\"\n"
-        assert_equal $erase$message$reading [read_cli $fd]
-
-        # Unsubscribe some.
-        set unsub1 "1) \"unsubscribe\"\n2) \"ch1\"\n3) (integer) 2\n"
-        set unsub2 "1) \"unsubscribe\"\n2) \"ch2\"\n3) (integer) 1\n"
-        assert_equal $erase$unsub1$unsub2$reading \
-            [run_command $fd "unsubscribe ch1 ch2"]
-
-        run_command $fd "hello 2"
-
-        # Command forbidden in subscribed mode (RESP2).
-        set err "(error) ERR Can't execute 'get': only (P|S)SUBSCRIBE / (P|S)UNSUBSCRIBE / PING / QUIT / RESET are allowed in this context\n"
-        assert_equal $erase$err$reading [run_command $fd "get k"]
-
-        # Command allowed in subscribed mode.
-        set pong "1) \"pong\"\n2) \"\"\n"
-        assert_equal $erase$pong$reading [run_command $fd "ping"]
-
-        # Reset exits subscribed mode.
-        assert_equal ${erase}RESET [run_command $fd "reset"]
-        assert_equal PONG [run_command $fd "ping"]
-
-        # Check TTY output of push messages in RESP3 has ")" prefix (to be changed to ">" in the future).
-        assert_match "1#*" [run_command $fd "hello 3"]
-        set sub1 "1) \"subscribe\"\n2) \"ch1\"\n3) (integer) 1\n"
-        assert_equal $sub1$reading \
-            [run_command $fd "subscribe ch1"]
-    }
-
-    test_interactive_nontty_cli "Subscribed mode" {
-        # Raw output and no "Reading messages..." info message.
-        # Use RESP3 in this test case.
-        assert_match {*proto 3*} [run_command $fd "hello 3"]
-
-        # Subscribe to some channels.
-        set sub1 "subscribe\nch1\n1"
-        set sub2 "subscribe\nch2\n2"
-        assert_equal $sub1\n$sub2 \
-            [run_command $fd "subscribe ch1 ch2"]
-
-        assert_equal OK [run_command $fd "client tracking on"]
-        assert_equal OK [run_command $fd "set k 42"]
-        assert_equal 42 [run_command $fd "get k"]
-
-        # Interleaving invalidate and pubsub messages.
-        r publish ch1 hello
-        r del k
-        r publish ch2 world
-        set message1 "message\nch1\nhello"
-        set invalidate "invalidate\nk"
-        set message2 "message\nch2\nworld"
-        assert_equal $message1\n$invalidate\n$message2\n [read_cli $fd]
-
-        # Unsubscribe all.
-        set unsub1 "unsubscribe\nch1\n1"
-        set unsub2 "unsubscribe\nch2\n0"
-        assert_equal $unsub1\n$unsub2 [run_command $fd "unsubscribe ch1 ch2"]
-    }
-
     test_tty_cli "Status reply" {
         assert_equal "OK" [run_cli set key bar]
         assert_equal "bar" [r get key]
@@ -485,13 +402,6 @@ start_server {tags {"cli"}} {
     test_tty_cli "Bulk reply" {
         r set key "tab\tnewline\n"
         assert_equal "\"tab\\tnewline\\n\"" [run_cli get key]
-    }
-
-    test_tty_cli "Multi-bulk reply" {
-        r del list
-        r rpush list foo
-        r rpush list bar
-        assert_equal "1) \"foo\"\n2) \"bar\"" [run_cli lrange list 0 -1]
     }
 
     test_tty_cli "Read last argument from pipe" {
@@ -514,30 +424,6 @@ start_server {tags {"cli"}} {
         file delete $tmpfile
     }
 
-    test_tty_cli "Escape character in JSON mode" {
-        # reverse solidus
-        r hset solidus \/ \/
-        assert_equal \/ \/ [run_cli hgetall solidus]
-        set escaped_reverse_solidus \"\\"
-        assert_equal $escaped_reverse_solidus $escaped_reverse_solidus [run_cli --json hgetall \/]
-        # non printable (0xF0 in ISO-8859-1, not UTF-8(0xC3 0xB0))
-        set eth "\u00f0\u0065"
-        r hset eth test $eth
-        assert_equal \"\\xf0e\" [run_cli hget eth test]
-        assert_equal \"\u00f0e\" [run_cli --json hget eth test]
-        assert_equal \"\\\\xf0e\" [run_cli --quoted-json hget eth test]
-        # control characters
-        r hset control test "Hello\x00\x01\x02\x03World"
-        assert_equal \"Hello\\u0000\\u0001\\u0002\\u0003World" [run_cli --json hget control test]
-        # non-string keys
-        r hset numkey 1 One
-        assert_equal \{\"1\":\"One\"\} [run_cli --json hgetall numkey]
-        # non-string, non-printable keys
-        r hset npkey "K\u0000\u0001ey" "V\u0000\u0001alue"
-        assert_equal \{\"K\\u0000\\u0001ey\":\"V\\u0000\\u0001alue\"\} [run_cli --json hgetall npkey]
-        assert_equal \{\"K\\\\x00\\\\x01ey\":\"V\\\\x00\\\\x01alue\"\} [run_cli --quoted-json hgetall npkey]
-    }
-
     test_nontty_cli "Status reply" {
         assert_equal "OK" [run_cli set key bar]
         assert_equal "bar" [r get key]
@@ -551,13 +437,6 @@ start_server {tags {"cli"}} {
     test_nontty_cli "Bulk reply" {
         r set key "tab\tnewline\n"
         assert_equal "tab\tnewline" [run_cli get key]
-    }
-
-    test_nontty_cli "Multi-bulk reply" {
-        r del list
-        r rpush list foo
-        r rpush list bar
-        assert_equal "foo\nbar" [run_cli lrange list 0 -1]
     }
 
 if {!$::tls} { ;# fake_redis_node doesn't support TLS
@@ -596,15 +475,6 @@ if {!$::tls} { ;# fake_redis_node doesn't support TLS
         assert_equal "unquoted-val" [r get {"\x41\x41"}]
     }
 
-    test_nontty_cli "Invalid quoted input arguments" {
-        catch {run_cli --quoted-input set {"Unterminated"}} err
-        assert_match {*exited abnormally*} $err
-
-        # A single arg that unquotes to two arguments is also not expected
-        catch {run_cli --quoted-input set {"arg1" "arg2"}} err
-        assert_match {*exited abnormally*} $err
-    }
-
     test_nontty_cli "Read last argument from pipe" {
         assert_equal "OK" [run_cli_with_input_pipe x "echo foo" set key]
         assert_equal "foo\n" [r get key]
@@ -625,27 +495,6 @@ if {!$::tls} { ;# fake_redis_node doesn't support TLS
         file delete $tmpfile
     }
 
-    test_nontty_cli "Test command-line hinting - latest server" {
-        # cli will connect to the running server and will use COMMAND DOCS
-        catch {run_cli --test_hint_file tcltests/assets/test_cli_hint_suite.txt} output
-        assert_match "*SUCCESS*" $output
-    }
-
-    test_nontty_cli "Test command-line hinting - no server" {
-        # cli will fail to connect to the server and will use the cached commands.c
-        catch {run_cli -p 123 --test_hint_file tcltests/assets/test_cli_hint_suite.txt} output
-        assert_match "*SUCCESS*" $output
-    }
-
-
-    test "Options -X with illegal argument" {
-        assert_error "*-x and -X are mutually exclusive*" {run_cli -x -X tag}
-
-        assert_error "*Unrecognized option or bad number*" {run_cli -X}
-
-        assert_error "*tag not match*" {run_cli_with_input_pipe X "echo foo" set key wrong_tag}
-    }
-
     test "DUMP RESTORE with -x option" {
         set cmdline [rediscli [srv host] [srv port]]
 
@@ -660,5 +509,161 @@ if {!$::tls} { ;# fake_redis_node doesn't support TLS
         puts "SMEMBERS new_set output: $smembers_output"
         assert_equal "1\n2\n3\n4\n5\n6" $smembers_output
     }
+
+    # **************************************************************************
+    # --------- TESTS below are waiting to commands to be implemented ----------
+    # **************************************************************************
+    # --------- LRANGE COMMAND ----------
+    # test_nontty_cli "Multi-bulk reply" {
+    #     r del list
+    #     r rpush list foo
+    #     r rpush list bar
+    #     assert_equal "foo\nbar" [run_cli lrange list 0 -1]
+    # }
+    # --------- LRANGE COMMAND ----------
+    # test_tty_cli "Multi-bulk reply" {
+    #     r del list
+    #     r rpush list foo
+    #     r rpush list bar
+    #     assert_equal "1) \"foo\"\n2) \"bar\"" [run_cli lrange list 0 -1]
+    # }
+    # --------- LRANGE COMMAND ----------
+    # test_interactive_cli "Multi-bulk reply" {
+    #     r rpush list foo
+    #     r rpush list bar
+    #     assert_equal "1) \"foo\"\n2) \"bar\"" [run_command $fd "lrange list 0 -1"]
+    # }
+    # --------- HGET COMMAND ----------
+    # test_tty_cli "Escape character in JSON mode" {
+    #     # reverse solidus
+    #     r hset solidus \/ \/
+    #     assert_equal \/ \/ [run_cli hgetall solidus]
+    #     set escaped_reverse_solidus \"\\"
+    #     assert_equal $escaped_reverse_solidus $escaped_reverse_solidus [run_cli --json hgetall \/]
+    #     # non printable (0xF0 in ISO-8859-1, not UTF-8(0xC3 0xB0))
+    #     set eth "\u00f0\u0065"
+    #     r hset eth test $eth
+    #     assert_equal \"\\xf0e\" [run_cli hget eth test]
+    #     assert_equal \"\u00f0e\" [run_cli --json hget eth test]
+    #     assert_equal \"\\\\xf0e\" [run_cli --quoted-json hget eth test]
+    #     # control characters
+    #     r hset control test "Hello\x00\x01\x02\x03World"
+    #     assert_equal \"Hello\\u0000\\u0001\\u0002\\u0003World" [run_cli --json hget control test]
+    #     # non-string keys
+    #     r hset numkey 1 One
+    #     assert_equal \{\"1\":\"One\"\} [run_cli --json hgetall numkey]
+    #     # non-string, non-printable keys
+    #     r hset npkey "K\u0000\u0001ey" "V\u0000\u0001alue"
+    #     assert_equal \{\"K\\u0000\\u0001ey\":\"V\\u0000\\u0001alue\"\} [run_cli --json hgetall npkey]
+    #     assert_equal \{\"K\\\\x00\\\\x01ey\":\"V\\\\x00\\\\x01alue\"\} [run_cli --quoted-json hgetall npkey]
+    # }
+    # --------- REDIS SUBSCRIBE/PUBLISH/UNSUBSCRIBE COMMAND ----------
+    # TODO: These can be replace by QWATCH commands for dice.
+    # test_interactive_cli "Subscribed mode" {
+    #     if {$::force_resp3} {
+    #         run_command $fd "hello 3"
+    #     }
+
+    #     set reading "Reading messages... (press Ctrl-C to quit or any key to type command)\r"
+    #     set erase "\033\[K"; # Erases the "Reading messages..." line.
+
+    #     # Subscribe to some channels.
+    #     set sub1 "1) \"subscribe\"\n2) \"ch1\"\n3) (integer) 1\n"
+    #     set sub2 "1) \"subscribe\"\n2) \"ch2\"\n3) (integer) 2\n"
+    #     set sub3 "1) \"subscribe\"\n2) \"ch3\"\n3) (integer) 3\n"
+    #     assert_equal $sub1$sub2$sub3$reading \
+    #         [run_command $fd "subscribe ch1 ch2 ch3"]
+
+    #     # Receive pubsub message.
+    #     r publish ch2 hello
+    #     set message "1) \"message\"\n2) \"ch2\"\n3) \"hello\"\n"
+    #     assert_equal $erase$message$reading [read_cli $fd]
+
+    #     # Unsubscribe some.
+    #     set unsub1 "1) \"unsubscribe\"\n2) \"ch1\"\n3) (integer) 2\n"
+    #     set unsub2 "1) \"unsubscribe\"\n2) \"ch2\"\n3) (integer) 1\n"
+    #     assert_equal $erase$unsub1$unsub2$reading \
+    #         [run_command $fd "unsubscribe ch1 ch2"]
+
+    #     run_command $fd "hello 2"
+
+    #     # Command forbidden in subscribed mode (RESP2).
+    #     set err "(error) ERR Can't execute 'get': only (P|S)SUBSCRIBE / (P|S)UNSUBSCRIBE / PING / QUIT / RESET are allowed in this context\n"
+    #     assert_equal $erase$err$reading [run_command $fd "get k"]
+
+    #     # Command allowed in subscribed mode.
+    #     set pong "1) \"pong\"\n2) \"\"\n"
+    #     assert_equal $erase$pong$reading [run_command $fd "ping"]
+
+    #     # Reset exits subscribed mode.
+    #     assert_equal ${erase}RESET [run_command $fd "reset"]
+    #     assert_equal PONG [run_command $fd "ping"]
+
+    #     # Check TTY output of push messages in RESP3 has ")" prefix (to be changed to ">" in the future).
+    #     assert_match "1#*" [run_command $fd "hello 3"]
+    #     set sub1 "1) \"subscribe\"\n2) \"ch1\"\n3) (integer) 1\n"
+    #     assert_equal $sub1$reading \
+    #         [run_command $fd "subscribe ch1"]
+    # }
+
+    # test_interactive_nontty_cli "Subscribed mode" {
+    #     # Raw output and no "Reading messages..." info message.
+    #     # Use RESP3 in this test case.
+    #     assert_match {*proto 3*} [run_command $fd "hello 3"]
+
+    #     # Subscribe to some channels.
+    #     set sub1 "subscribe\nch1\n1"
+    #     set sub2 "subscribe\nch2\n2"
+    #     assert_equal $sub1\n$sub2 \
+    #         [run_command $fd "subscribe ch1 ch2"]
+
+    #     assert_equal OK [run_command $fd "client tracking on"]
+    #     assert_equal OK [run_command $fd "set k 42"]
+    #     assert_equal 42 [run_command $fd "get k"]
+
+    #     # Interleaving invalidate and pubsub messages.
+    #     r publish ch1 hello
+    #     r del k
+    #     r publish ch2 world
+    #     set message1 "message\nch1\nhello"
+    #     set invalidate "invalidate\nk"
+    #     set message2 "message\nch2\nworld"
+    #     assert_equal $message1\n$invalidate\n$message2\n [read_cli $fd]
+
+    #     # Unsubscribe all.
+    #     set unsub1 "unsubscribe\nch1\n1"
+    #     set unsub2 "unsubscribe\nch2\n0"
+    #     assert_equal $unsub1\n$unsub2 [run_command $fd "unsubscribe ch1 ch2"]
+    # }
+
+    # **************************************************************************
+    # --------- TESTS below are specific to redis-cli test we can ignore -------
+    # **************************************************************************
+    # test_nontty_cli "Test command-line hinting - latest server" {
+    #     # cli will connect to the running server and will use COMMAND DOCS
+    #     catch {run_cli --test_hint_file tcltests/assets/test_cli_hint_suite.txt} output
+    #     assert_match "*SUCCESS*" $output
+    # }
+
+    # test_nontty_cli "Test command-line hinting - no server" {
+    #     # cli will fail to connect to the server and will use the cached commands.c
+    #     catch {run_cli -p 123 --test_hint_file tcltests/assets/test_cli_hint_suite.txt} output
+    #     assert_match "*SUCCESS*" $output
+    # }
+
+    # test "Options -X with illegal argument" {
+    #     assert_error "*-x and -X are mutually exclusive*" {run_cli -x -X tag}
+    #     assert_error "*Unrecognized option or bad number*" {run_cli -X}
+    #     assert_error "*tag not match*" {run_cli_with_input_pipe X "echo foo" set key wrong_tag}
+    # }
+
+    # test_nontty_cli "Invalid quoted input arguments" {
+    #     catch {run_cli --quoted-input set {"Unterminated"}} err
+    #     assert_match {*exited abnormally*} $err
+    #
+    #     # A single arg that unquotes to two arguments is also not expected
+    #     catch {run_cli --quoted-input set {"arg1" "arg2"}} err
+    #     assert_match {*exited abnormally*} $err
+    # }
 }
 
