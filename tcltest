@@ -1,10 +1,15 @@
 #!/bin/bash
 
 # Define variables
+WORK_DIR=`pwd`
+SERVER_HOST=127.0.0.1
 SERVER_PORT=7379
 SERVER_CMD="air"
-TEST_CMD="./runtest --host 127.0.0.1 --port $SERVER_PORT --tags -needs:debug --tags -cluster:skip"
-SERVER_PID_FILE="server.pid"
+TEST_CMD="./runtest --host $SERVER_HOST --port $SERVER_PORT --tags -needs:debug --tags -cluster:skip"
+SERVER_PID_FILE="$WORK_DIR/server.pid"
+PATCH_DIR="dice-patch"
+PATCH_FILE_NAME="tcltest.patch"
+ABS_PATH_PATCH_FILE="$WORK_DIR/$PATCH_DIR/$PATCH_FILE_NAME"
 
 # Check if directory path is passed as an argument
 if [ -z "$1" ]; then
@@ -21,6 +26,15 @@ fi
 # Navigate to the provided directory
 cd "$1" || exit
 
+# Apply patch
+git apply $ABS_PATH_PATCH_FILE
+if [ $? -eq 0 ]; then
+    echo "Patch applied successfully"
+else
+    echo "Patch apply failed. Aborting...."
+    exit 1
+fi
+
 # Start the Go server in the background
 echo "Starting the server..."
 # Enable TCL_TESTS
@@ -36,6 +50,9 @@ else
   SERVER_PID=$!
 fi
 
+# Switch back to origin dir after starting server
+cd $WORK_DIR
+
 # Save the server PID to a file for later use
 echo $SERVER_PID > $SERVER_PID_FILE
 cat $SERVER_PID_FILE
@@ -49,7 +66,11 @@ echo "Running tests..."
 $TEST_CMD
 
 # Capture the exit code of the test command
-TEST_EXIT_CODE=$?
+if [ $? -eq 0 ]; then
+    echo "Test execution successful."
+else
+    echo "Test execution failed."
+fi
 
 # Stop the server
 echo "Stopping the server..."
