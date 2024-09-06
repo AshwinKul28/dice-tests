@@ -1,8 +1,10 @@
 #!/bin/bash
 
-# Define variables
-WORK_DIR=`pwd`
+# Variables
+WORK_DIR=$(pwd)
 SERVER_HOST=127.0.0.1
+REPO_URL="git@github.com:DiceDB/dice.git"
+CLONE_DIR="dice"  # Directory to clone into if no arg is provided
 SERVER_PORT=7379
 SERVER_CMD="air"
 TEST_CMD="./runtest --host $SERVER_HOST --port $SERVER_PORT --tags -needs:debug --tags -cluster:skip"
@@ -11,73 +13,85 @@ PATCH_DIR="dice-patch"
 PATCH_FILE_NAME="tcltest.patch"
 ABS_PATH_PATCH_FILE="$WORK_DIR/$PATCH_DIR/$PATCH_FILE_NAME"
 
-# Check if directory path is passed as an argument
+# Function to clone the repository
+clone_repo() {
+  if [ -d "$CLONE_DIR" ]; then
+    echo "Directory '$CLONE_DIR' exists. Removing it to fetch latest master."
+    rm -rf "$CLONE_DIR"
+  fi
+  git clone "$REPO_URL" "$CLONE_DIR" || { echo "Error cloning repository."; exit 1; }
+}
+
+# Function to apply patch
+apply_patch() {
+  git apply "$ABS_PATH_PATCH_FILE" || { echo "Patch apply failed. Aborting."; exit 1; }
+  echo "Patch applied successfully."
+}
+
+# Function to start the server
+start_server() {
+  export TCL_TESTS=true
+  if ! command -v air &>/dev/null; then
+    echo "'air' not found, running 'go run main.go'..."
+    go run main.go &
+  else
+    echo "'air' found, running 'air'..."
+    $SERVER_CMD &
+  fi
+  SERVER_PID=$!
+  echo "$SERVER_PID" > "$SERVER_PID_FILE"
+  sleep 5  # Adjust based on server startup time
+}
+
+# Function to run tests
+run_tests() {
+  echo "Running tests..."
+  $TEST_CMD
+  return $?
+}
+
+# Function to stop server
+stop_server() {
+  echo "Stopping the server..."
+  kill "$SERVER_PID"
+  rm -f "$SERVER_PID_FILE"
+}
+
+# Main script execution
 if [ -z "$1" ]; then
-  echo "Error: No directory path provided."
+  echo "No directory path provided. Cloning repository..."
+  clone_repo
+  TARGET_DIR="$CLONE_DIR"
+else
+  TARGET_DIR="$1"
+fi
+
+# Ensure target directory exists
+if [ ! -d "$TARGET_DIR" ]; then
+  echo "Error: Directory '$TARGET_DIR' does not exist."
   exit 1
 fi
 
-# Check if the directory exists
-if [ ! -d "$1" ]; then
-  echo "Error: Directory '$1' does not exist."
-  exit 1
-fi
+# Navigate to target directory and apply patch
+cd "$TARGET_DIR" || exit
+apply_patch
 
-# Navigate to the provided directory
-cd "$1" || exit
+# Start the server
+start_server
 
-# Apply patch
-git apply $ABS_PATH_PATCH_FILE
-if [ $? -eq 0 ]; then
-    echo "Patch applied successfully"
-else
-    echo "Patch apply failed. Aborting...."
-    exit 1
-fi
-
-# Start the Go server in the background
-echo "Starting the server..."
-# Enable TCL_TESTS
-export TCL_TESTS=true
-# Check if the 'air' command exists
-if ! command -v air &> /dev/null; then
-  echo "'air' command not found, running 'go run main.go' instead..."
-  go run main.go &
-  SERVER_PID=$!
-else
-  echo "'air' command found, running 'air'..."
-  $SERVER_CMD &
-  SERVER_PID=$!
-fi
-
-# Switch back to origin dir after starting server
-cd $WORK_DIR
-
-# Save the server PID to a file for later use
-echo $SERVER_PID > $SERVER_PID_FILE
-cat $SERVER_PID_FILE
-
-# Wait for the server to start
-echo "Waiting for the server to start..."
-sleep 5  # Adjust this sleep duration based on how long the server takes to start
-
-# Run the tests
-echo "Running tests..."
-$TEST_CMD
-
-# Capture the exit code of the test command
-if [ $? -eq 0 ]; then
-    echo "Test execution successful."
-else
-    echo "Test execution failed."
-fi
+# Switch back to working directory and run tests
+cd "$WORK_DIR"
+run_tests
+TEST_EXIT_CODE=$?
 
 # Stop the server
-echo "Stopping the server..."
-kill $SERVER_PID
+stop_server
 
-# Remove the server PID file
-rm -f $SERVER_PID_FILE
+# Remove the cloned directory if we cloned it
+if [ "$TARGET_DIR" == "$CLONE_DIR" ]; then
+  echo "Removing cloned directory '$CLONE_DIR'..."
+  rm -rf "$CLONE_DIR"
+fi
 
-# Exit with the same code as the test command
-exit 0
+# Exit with test command exit code
+exit $TEST_EXIT_CODE
