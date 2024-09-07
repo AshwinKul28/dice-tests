@@ -21,6 +21,7 @@ set dir [pwd]
 set ::all_tests []
 
 set test_dirs {
+    unit
     integration
 }
 
