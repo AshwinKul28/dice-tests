@@ -11,7 +11,7 @@ escape_for_sed() {
     echo "$1" | sed 's/[&/\]/\\&/g; s/\n/\\n/g'
 }
 
-REPO_LINK="https://github.com/AshwinKul28/dice-tests"
+REPO_LINK="https://github.com/AshwinKul28/dice-tests/tree/main"
 
 # The full error message from the argument
 error_message="$1"
@@ -60,7 +60,7 @@ line=$(echo "$line_extraction" | grep -n . | cut -d: -f1)
 # Extract the line number where the issue occurs
 line=$(grep -n "$msg" "../$tcl_file" | cut -d: -f1)
 # Convert line number to a sentence
-steps_to_reproduce_sentence="Run the commands mentioned in the test on Line $line in the file $link."
+steps_to_reproduce_sentence="Run the commands mentioned in the test on Line $line in the file $link#L$line."
 # steps_to_reproduce_sentence=$(escape_for_sed "$steps_to_reproduce_sentence")
 
 

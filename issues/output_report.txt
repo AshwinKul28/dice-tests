@@ -4,9 +4,9 @@ There is an inconsistent and incorrect behavior (probably a bug) in the current 
 
 ## Steps to reproduce
 
-```
-Run the commands mentioned in the test on Line 98 in the file https://github.com/AshwinKul28/dice-teststcltests/unit/expire.tcl.
-```
+
+Run the commands mentioned in the test on Line 98 in the file https://github.com/AshwinKul28/dice-tests/tree/main/tcltests/unit/expire.tcl#L98.
+
 
 ## Expected output
 
@@ -16,7 +16,7 @@ The expected output when the above set of commands when run on Redis
 ERR invalid expire time in 'getex' command
 ```
 
-You can find the related TCL test case - https://github.com/AshwinKul28/dice-teststcltests/unit/expire.tcl
+You can find the related TCL test case - https://github.com/AshwinKul28/dice-tests/tree/main/tcltests/unit/expire.tcl
 
 This test case should pass once this issue is fixed. The steps to run the test cases are mentioned
 in the README of the [dice-tests repository](https://github.com/AshwinKul28/dice-tests/blob/main/README.md).

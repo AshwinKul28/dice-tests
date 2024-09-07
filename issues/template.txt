@@ -4,9 +4,9 @@ There is an inconsistent and incorrect behavior (probably a bug) in the current 
 
 ## Steps to reproduce
 
-```
+
 {steps_to_reproduce}
-```
+
 
 ## Expected output
 
