@@ -293,6 +293,7 @@ proc test_server_main {} {
     array set ::clients_start_time {}
     set ::clients_time_history {}
     set ::failed_tests {}
+    set ::passed_tests {}
 
     # Enter the event loop to handle clients I/O
     after 100 test_server_cron
@@ -357,6 +358,7 @@ proc read_from_test_client fd {
         signal_idle_client $fd
         set ::active_clients_task($fd) "(DONE) $data"
     } elseif {$status eq {ok}} {
+        lappend ::passed_tests $status
         if {!$::quiet} {
             puts "\[[colorstr green $status]\]: $data ($elapsed ms)"
         }
@@ -490,6 +492,16 @@ proc the_end {} {
     foreach {time name} $::clients_time_history {
         puts "  $time seconds - $name"
     }
+
+    # Print counts of passed and failed tests
+    set passed_count [llength $::passed_tests]
+    set failed_count [llength $::failed_tests]
+
+    puts "\nTest Summary:"
+    puts "  Passed tests: $passed_count"
+    puts "  Failed tests: $failed_count"
+
+
     if {[llength $::failed_tests]} {
         puts "\n[colorstr bold-red {!!! WARNING}] The following tests failed:\n"
         foreach failed $::failed_tests {
