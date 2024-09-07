@@ -28,7 +28,7 @@ fi
 
 # Output the extracted TCL file name
 echo "Extracted TCL file name: $tcl_file"
-link="$REPO_LINK$tcl_file"
+link="$REPO_LINK/$tcl_file"
 link=$(escape_for_sed "$link")
 
 tcl_file="tcltests/unit/expire.tcl"
@@ -64,8 +64,6 @@ steps_to_reproduce_sentence="Run the commands mentioned in the test on Line $lin
 # steps_to_reproduce_sentence=$(escape_for_sed "$steps_to_reproduce_sentence")
 
 
-link="$REPO_LINK$tcl_file"
-link=$(escape_for_sed "$link")
 # Replace placeholders in the template using the extracted values
 sed -e "s/{CMD}/$cmd/g" \
     -e "s/{observed_output}/$observed_output/g" \
