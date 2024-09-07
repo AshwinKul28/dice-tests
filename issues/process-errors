@@ -1,0 +1,78 @@
+#!/bin/bash
+
+# Check if the error message is passed as an argument
+if [ -z "$1" ]; then
+  echo "Error: No error message provided."
+  exit 1
+fi
+
+# Escape special characters in variables for sed
+escape_for_sed() {
+    echo "$1" | sed 's/[&/\]/\\&/g; s/\n/\\n/g'
+}
+
+REPO_LINK="https://github.com/AshwinKul28/dice-tests"
+
+# The full error message from the argument
+error_message="$1"
+
+# Extract the TCL file name from the error message after the first "in"
+# and ensure it ends with .tcl
+tcl_file=$(echo "$error_message" | awk -F'in ' '{print $2}' | sed -n 's/^\([^\ ]*\.tcl\).*$/\1/p')
+
+# If no TCL file is found, exit with an error
+if [ -z "$tcl_file" ]; then
+  echo "Error: Unable to extract TCL file name from the error message."
+  exit 1
+fi
+
+# Output the extracted TCL file name
+echo "Extracted TCL file name: $tcl_file"
+link="$REPO_LINK$tcl_file"
+link=$(escape_for_sed "$link")
+
+tcl_file="tcltests/unit/expire.tcl"
+tcl_file_path="../$tcl_file"
+
+# Define file paths
+template_file="template.txt"
+output_file="output_report.txt"
+
+# Check if the template file exists
+if [ ! -f "$template_file" ]; then
+  echo "Error: Template file '$template_file' does not exist."
+  exit 1
+fi
+
+# Extract values from the error message using sed
+cmd=$(echo "$error_message" | sed -n "s/.*\[err\]: \([^ ]*\).*/\1/p")
+observed_output=$(echo "$error_message" | sed -n "s/.*equal or match '\([^']*\)'.*/\1/p")
+expected_output=$(echo "$error_message" | sed -n "s/.*Expected '\(.*\)' to equal or match.*/\1/p")
+
+msg=$(echo "$error_message" | sed -n "s/.*\[err\]: \(.*\) in .*/\1/p")
+description=$(escape_for_sed $msg)
+
+
+# Extract the portion of the message before the first "in"
+line_extraction=$(echo "$error_message" | awk -F'in ' '{print $1}')
+# Extract the line number where the issue occurs based on the portion before the first "in"
+line=$(echo "$line_extraction" | grep -n . | cut -d: -f1)
+# Extract the line number where the issue occurs
+line=$(grep -n "$msg" "../$tcl_file" | cut -d: -f1)
+# Convert line number to a sentence
+steps_to_reproduce_sentence="Run the commands mentioned in the test on Line $line in the file $link."
+# steps_to_reproduce_sentence=$(escape_for_sed "$steps_to_reproduce_sentence")
+
+
+link="$REPO_LINK$tcl_file"
+link=$(escape_for_sed "$link")
+# Replace placeholders in the template using the extracted values
+sed -e "s/{CMD}/$cmd/g" \
+    -e "s/{observed_output}/$observed_output/g" \
+    -e "s/{expected_output}/$expected_output/g" \
+    -e "s/{steps_to_reproduce}/$steps_to_reproduce_sentence/g" \
+    -e "s/{tcl_testcase_link}/$link/g" \
+    -e "s/{description}/$msg/g" \
+    "$template_file" > "$output_file"
+
+echo "Updated report generated: $output_file"
