@@ -1,12 +1,20 @@
-diff --git a/internal/constants/constants.go b/internal/constants/constants.go
-index 8cf4e54..396c637 100644
---- a/internal/constants/constants.go
-+++ b/internal/constants/constants.go
-@@ -52,3 +52,27 @@ const (
- 	Set string = "set"
- 	Del string = "del"
+diff --git a/internal/shard/shard_thread.go b/internal/shard/shard_thread.go
+index 09d65d5..3595d06 100644
+--- a/internal/shard/shard_thread.go
++++ b/internal/shard/shard_thread.go
+@@ -3,6 +3,8 @@ package shard
+ import (
+ 	"context"
+ 	"fmt"
++	"os"
++	"strconv"
+ 	"strings"
+ 	"sync"
+ 	"time"
+@@ -17,6 +19,30 @@ import (
+ 	dstore "github.com/dicedb/dice/internal/store"
  )
-+
+ 
 +// Temporary set for ignoring these commands while tcl tests.
 +// Once these commands are implemented we can remove them from the set one by one.
 +var IgnoreCommands = map[string]string{
@@ -30,21 +38,11 @@ index 8cf4e54..396c637 100644
 +	"SAVE":      "ignore for tcl test",
 +	"CONFIG":    "ignore for tcl test",
 +}
-diff --git a/internal/shard/shard_thread.go b/internal/shard/shard_thread.go
-index 09d65d5..82103b8 100644
---- a/internal/shard/shard_thread.go
-+++ b/internal/shard/shard_thread.go
-@@ -3,6 +3,9 @@ package shard
- import (
- 	"context"
- 	"fmt"
-+	"github.com/dicedb/dice/internal/constants"
-+	"os"
-+	"strconv"
- 	"strings"
- 	"sync"
- 	"time"
-@@ -105,6 +108,19 @@ func (shard *ShardThread) processRequest(op *ops.StoreOp) {
++
+ type ShardID int8
+ 
+ type ShardError struct {
+@@ -105,6 +131,19 @@ func (shard *ShardThread) processRequest(op *ops.StoreOp) {
  func (shard *ShardThread) executeCommand(op *ops.StoreOp) []byte {
  	diceCmd, ok := eval.DiceCmds[op.Cmd.Cmd]
  	if !ok {
@@ -57,7 +55,7 @@ index 09d65d5..82103b8 100644
 +
 +		// if env variable is set, then only ignore unknown commands
 +		if runTclTests {
-+			if _, exists := constants.IgnoreCommands[op.Cmd.Cmd]; exists {
++			if _, exists := IgnoreCommands[op.Cmd.Cmd]; exists {
 +				return clientio.RespOK
 +			}
 +		}
