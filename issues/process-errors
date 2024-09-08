@@ -31,12 +31,12 @@ echo "Extracted TCL file name: $tcl_file"
 link="$REPO_LINK/$tcl_file"
 link=$(escape_for_sed "$link")
 
-tcl_file="tcltests/unit/expire.tcl"
+# tcl_file="tcltests/unit/expire.tcl"
 tcl_file_path="../$tcl_file"
 
 # Define file paths
 template_file="template.txt"
-output_file="output_report.txt"
+
 
 # Check if the template file exists
 if [ ! -f "$template_file" ]; then
@@ -63,6 +63,7 @@ line=$(grep -n "$msg" "../$tcl_file" | cut -d: -f1)
 steps_to_reproduce_sentence="Run the commands mentioned in the test on Line $line in the file $link#L$line."
 # steps_to_reproduce_sentence=$(escape_for_sed "$steps_to_reproduce_sentence")
 
+output_file="$CMD_$msg.txt"
 
 # Replace placeholders in the template using the extracted values
 sed -e "s/{CMD}/$cmd/g" \

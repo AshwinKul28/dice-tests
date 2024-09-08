@@ -1,17 +1,17 @@
-TITLE: Inconsistent `{CMD}`: {description}
+TITLE: Inconsistent `EXPIRE`: EXPIRE with big integer overflows when converted to milliseconds
 
 #######################################################################
 
 ## Steps to reproduce
 
-{steps_to_reproduce}
+Run the commands mentioned in the test on Line 110 in the file https://github.com/AshwinKul28/dice-tests/tree/main/tcltests/unit/expire.tcl#L110.
 
 ## Expected output
 
 The expected output when the above set of commands when run on Redis
 
 ```
-{expected_output}
+ERR invalid expire time in 'expire' command
 ```
 
 ## Observed output
@@ -19,7 +19,7 @@ The expected output when the above set of commands when run on Redis
 The observed output when the above set of commands when run on DiceDB
 
 ```
-{observed_output}
+1
 ```
 
 The steps to run the test cases are mentioned in the README of the [dice-tests repository](https://github.com/AshwinKul28/dice-tests).
