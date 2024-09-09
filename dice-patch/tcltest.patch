@@ -1,5 +1,5 @@
 diff --git a/internal/shard/shard_thread.go b/internal/shard/shard_thread.go
-index 09d65d5..3595d06 100644
+index 09d65d5..39462b6 100644
 --- a/internal/shard/shard_thread.go
 +++ b/internal/shard/shard_thread.go
 @@ -3,6 +3,8 @@ package shard
@@ -11,18 +11,15 @@ index 09d65d5..3595d06 100644
  	"strings"
  	"sync"
  	"time"
-@@ -17,6 +19,30 @@ import (
+@@ -17,6 +19,27 @@ import (
  	dstore "github.com/dicedb/dice/internal/store"
  )
  
-+// Temporary set for ignoring these commands while tcl tests.
-+// Once these commands are implemented we can remove them from the set one by one.
 +var IgnoreCommands = map[string]string{
 +	"SELECT":    "ignore for tcl test",
 +	"FUNCTION":  "ignore for tcl test",
 +	"FLUSHALL":  "ignore for tcl test",
 +	"RPUSH":     "ignore for tcl test",
-+	"HGET":      "ignore for tcl test",
 +	"LRANGE":    "ignore for tcl test",
 +	"ACL":       "ignore for tcl test",
 +	"FLUSHDB":   "ignore for tcl test",
@@ -42,7 +39,7 @@ index 09d65d5..3595d06 100644
  type ShardID int8
  
  type ShardError struct {
-@@ -105,6 +131,19 @@ func (shard *ShardThread) processRequest(op *ops.StoreOp) {
+@@ -105,6 +128,19 @@ func (shard *ShardThread) processRequest(op *ops.StoreOp) {
  func (shard *ShardThread) executeCommand(op *ops.StoreOp) []byte {
  	diceCmd, ok := eval.DiceCmds[op.Cmd.Cmd]
  	if !ok {
