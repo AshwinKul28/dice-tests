@@ -11,7 +11,7 @@ Run the commands mentioned in the test on Line 493 in the file https://github.co
 The expected output when the above set of commands when run on Redis
 
 ```
-
+-1
 ```
 
 ## Observed output
@@ -19,7 +19,7 @@ The expected output when the above set of commands when run on Redis
 The observed output when the above set of commands when run on DiceDB
 
 ```
-
+199
 ```
 
 The steps to run the test cases are mentioned in the README of the [dice-tests repository](https://github.com/AshwinKul28/dice-tests).
