@@ -518,6 +518,30 @@ if {!$::tls} { ;# fake_redis_node doesn't support TLS
         assert_equal $expected_list $smembers_list
     }
 
+    test_tty_cli "Escape character in JSON mode" {
+        # reverse solidus
+        r hset solidus \/ \/
+        assert_equal \/ \/ [run_cli hgetall solidus]
+        set escaped_reverse_solidus \"\\"
+        assert_equal $escaped_reverse_solidus $escaped_reverse_solidus [run_cli --json hgetall \/]
+        # non printable (0xF0 in ISO-8859-1, not UTF-8(0xC3 0xB0))
+        set eth "\u00f0\u0065"
+        r hset eth test $eth
+        assert_equal \"\\xf0e\" [run_cli hget eth test]
+        assert_equal \"\u00f0e\" [run_cli --json hget eth test]
+        assert_equal \"\\\\xf0e\" [run_cli --quoted-json hget eth test]
+        # control characters
+        r hset control test "Hello\x00\x01\x02\x03World"
+        assert_equal \"Hello\\u0000\\u0001\\u0002\\u0003World" [run_cli --json hget control test]
+        # non-string keys
+        r hset numkey 1 One
+        assert_equal \{\"1\":\"One\"\} [run_cli --json hgetall numkey]
+        # non-string, non-printable keys
+        r hset npkey "K\u0000\u0001ey" "V\u0000\u0001alue"
+        assert_equal \{\"K\\u0000\\u0001ey\":\"V\\u0000\\u0001alue\"\} [run_cli --json hgetall npkey]
+        assert_equal \{\"K\\\\x00\\\\x01ey\":\"V\\\\x00\\\\x01alue\"\} [run_cli --quoted-json hgetall npkey]
+    }
+
     # **************************************************************************
     # --------- TESTS below are waiting to commands to be implemented ----------
     # **************************************************************************
@@ -540,30 +564,6 @@ if {!$::tls} { ;# fake_redis_node doesn't support TLS
     #     r rpush list foo
     #     r rpush list bar
     #     assert_equal "1) \"foo\"\n2) \"bar\"" [run_command $fd "lrange list 0 -1"]
-    # }
-    # --------- HGET COMMAND ----------
-    # test_tty_cli "Escape character in JSON mode" {
-    #     # reverse solidus
-    #     r hset solidus \/ \/
-    #     assert_equal \/ \/ [run_cli hgetall solidus]
-    #     set escaped_reverse_solidus \"\\"
-    #     assert_equal $escaped_reverse_solidus $escaped_reverse_solidus [run_cli --json hgetall \/]
-    #     # non printable (0xF0 in ISO-8859-1, not UTF-8(0xC3 0xB0))
-    #     set eth "\u00f0\u0065"
-    #     r hset eth test $eth
-    #     assert_equal \"\\xf0e\" [run_cli hget eth test]
-    #     assert_equal \"\u00f0e\" [run_cli --json hget eth test]
-    #     assert_equal \"\\\\xf0e\" [run_cli --quoted-json hget eth test]
-    #     # control characters
-    #     r hset control test "Hello\x00\x01\x02\x03World"
-    #     assert_equal \"Hello\\u0000\\u0001\\u0002\\u0003World" [run_cli --json hget control test]
-    #     # non-string keys
-    #     r hset numkey 1 One
-    #     assert_equal \{\"1\":\"One\"\} [run_cli --json hgetall numkey]
-    #     # non-string, non-printable keys
-    #     r hset npkey "K\u0000\u0001ey" "V\u0000\u0001alue"
-    #     assert_equal \{\"K\\u0000\\u0001ey\":\"V\\u0000\\u0001alue\"\} [run_cli --json hgetall npkey]
-    #     assert_equal \{\"K\\\\x00\\\\x01ey\":\"V\\\\x00\\\\x01alue\"\} [run_cli --quoted-json hgetall npkey]
     # }
     # --------- REDIS SUBSCRIBE/PUBLISH/UNSUBSCRIBE COMMAND ----------
     # TODO: These can be replace by QWATCH commands for dice.
