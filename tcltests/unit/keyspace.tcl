@@ -28,7 +28,7 @@ start_server {tags {"keyspace"}} {
 
     test {KEYS to get all keys} {
         lsort [r keys *]
-    } {foo_a foo_b foo_c key_x key_y key_z}
+    } {e foo_a foo_b foo_c key_x key_y key_z s t}
 
     test {DBSIZE} {
         r dbsize

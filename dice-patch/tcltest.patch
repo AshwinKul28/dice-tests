@@ -11,7 +11,7 @@ index 09d65d5..3595d06 100644
  	"strings"
  	"sync"
  	"time"
-@@ -17,6 +19,30 @@ import (
+@@ -17,6 +19,37 @@ import (
  	dstore "github.com/dicedb/dice/internal/store"
  )
  
@@ -37,6 +37,13 @@ index 09d65d5..3595d06 100644
 +	"REPLICAOF": "ignore for tcl test",
 +	"SAVE":      "ignore for tcl test",
 +	"CONFIG":    "ignore for tcl test",
++   "APPEND":    "ignore for tcl test",
++   "BITFIELD":  "ignore for tcl test",
++   "PFDEBUG":   "ignore for tcl test",
++   "STRLEN":    "ignore for tcl test",
++   "SETRANGE":  "ignore for tcl test",
++   "PFMERGE":   "ignore for tcl test",
++   "GETRANGE":   "ignore for tcl test",
 +}
 +
  type ShardID int8
