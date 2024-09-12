@@ -146,46 +146,17 @@ start_server {tags {"hll"}} {
         set e
     } {*WRONGTYPE*}
 
-    # test {Fuzzing dense/sparse encoding: Redis should always detect errors} {
-    #     for {set j 0} {$j < 1}0 {incr j} {
-    #         r del hll
-    #         set items {}
-    #         set numitems [randomInt 200]
-    #         for {set i 0} {$i < $numitems} {incr i} {
-    #             lappend items [expr {rand()}]
-    #         }
-    #         r pfadd hll {*}$items
-
-    #         # Corrupt it in some random way.
-    #         for {set i 0} {$i < 5} {incr i} {
-    #             set len [r strlen hll]
-    #             set pos [randomInt $len]
-    #             set byte [randstring 1 1 binary]
-    #             r setrange hll $pos $byte
-    #             # Don't modify more bytes 50% of times
-    #             if {rand() < 0.5} break
-    #         }
-
-    #         # Use the hyperloglog to check if it crashes
-    #         # Redis in some way.
-    #         catch {
-    #             r pfcount hll
-    #         }
-    #     }
-    # }
-
-    #TODO: uncomment once latest changes are merged. 
-    # test {PFADD, PFCOUNT, PFMERGE type checking works} {
-    #     r set foo{t} bar
-    #     catch {r pfadd foo{t} 1} e
-    #     assert_match {*WRONGTYPE*} $e
-    #     catch {r pfcount foo{t}} e
-    #     assert_match {*WRONGTYPE*} $e
-    #     catch {r pfmerge bar{t} foo{t}} e
-    #     assert_match {*WRONGTYPE*} $e
-    #     catch {r pfmerge foo{t} bar{t}} e
-    #     assert_match {*WRONGTYPE*} $e
-    # }
+    test {PFADD, PFCOUNT, PFMERGE type checking works} {
+        r set foo{t} bar
+        catch {r pfadd foo{t} 1} e
+        assert_match {*WRONGTYPE*} $e
+        catch {r pfcount foo{t}} e
+        assert_match {*WRONGTYPE*} $e
+        catch {r pfmerge bar{t} foo{t}} e
+        assert_match {*WRONGTYPE*} $e
+        catch {r pfmerge foo{t} bar{t}} e
+        assert_match {*WRONGTYPE*} $e
+    }
 
     test {PFMERGE results on the cardinality of union of sets} {
         r del hll{t} hll1{t} hll2{t} hll3{t}
@@ -269,4 +240,36 @@ start_server {tags {"hll"}} {
         r pfadd hll 1 2 3
         assert {[r getrange hll 15 15] eq "\x80"}
     }
+
+    # **************************************************************************
+    # --------- TESTS below are waiting to commands to be implemented ----------
+    # **************************************************************************
+    # --------- SETRANGE COMMAND ----------
+    # test {Fuzzing dense/sparse encoding: Redis should always detect errors} {
+    #     for {set j 0} {$j < 1}0 {incr j} {
+    #         r del hll
+    #         set items {}
+    #         set numitems [randomInt 200]
+    #         for {set i 0} {$i < $numitems} {incr i} {
+    #             lappend items [expr {rand()}]
+    #         }
+    #         r pfadd hll {*}$items
+
+    #         # Corrupt it in some random way.
+    #         for {set i 0} {$i < 5} {incr i} {
+    #             set len [r strlen hll]
+    #             set pos [randomInt $len]
+    #             set byte [randstring 1 1 binary]
+    #             r setrange hll $pos $byte
+    #             # Don't modify more bytes 50% of times
+    #             if {rand() < 0.5} break
+    #         }
+
+    #         # Use the hyperloglog to check if it crashes
+    #         # Redis in some way.
+    #         catch {
+    #             r pfcount hll
+    #         }
+    #     }
+    # }
 }
