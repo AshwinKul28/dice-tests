@@ -3,8 +3,10 @@
 ## Table of Contents
 
 - [About TCL tests](#about)
-- [Idnetify tcl tests from Redis repository](#idnetify-tcl-tests-from-redis-repository)
-- 
+- [Idnetify tcl tests from Redis repository](#identify-tcl-tests-from-redis-repository)
+- [Add new tests in the suite](#add-test-cases-in-the-dice-test-suite)
+- [Run the test suite](#run-the-test-suite)
+- [Create issues in the Dice DB repository](#create-issues-in-the-dice-db-repository)
 
 ## About
 
