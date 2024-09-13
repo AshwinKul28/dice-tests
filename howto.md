@@ -13,7 +13,7 @@
 
 TCL tests refer to automated tests written in the Tcl (Tool Command Language) scripting language, commonly used for testing software applications, especially in environments where Tcl is used for scripting or automation. Tcl tests can include unit tests, integration tests, regression tests, or functional tests, depending on the scope and purpose.
 
-## Idnetify tcl tests from Redis repository
+## Identify tcl tests from Redis repository
 
 To make DiceDB as a drop in replacement for Redis along with all the other features, we try to make it maximum compatible with the exisiting redis features. The best way to check the compatibility is running the redis tests against DiceDB.
 
