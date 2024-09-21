@@ -1,17 +1,17 @@
-diff --git a/internal/shard/shard_thread.go b/internal/shard/shard_thread.go
-index 9f48b73..3d43d6d 100644
---- a/internal/shard/shard_thread.go
-+++ b/internal/shard/shard_thread.go
-@@ -3,6 +3,8 @@ package shard
+diff --git a/internal/eval/execute.go b/internal/eval/execute.go
+index 964670f..ab8edf6 100644
+--- a/internal/eval/execute.go
++++ b/internal/eval/execute.go
+@@ -1,6 +1,8 @@
+ package eval
+ 
  import (
- 	"context"
- 	"fmt"
 +	"os"
 +	"strconv"
  	"strings"
- 	"sync"
- 	"time"
-@@ -19,6 +21,32 @@ import (
+ 
+ 	"github.com/dicedb/dice/internal/auth"
+@@ -11,9 +13,48 @@ import (
  	dstore "github.com/dicedb/dice/internal/store"
  )
  
@@ -41,12 +41,8 @@ index 9f48b73..3d43d6d 100644
 +	"GETRANGE":  "ignore for tcl test",
 +}
 +
- type ShardID int8
- 
- type ShardError struct {
-@@ -107,6 +135,19 @@ func (shard *ShardThread) processRequest(op *ops.StoreOp) {
- func (shard *ShardThread) executeCommand(op *ops.StoreOp) []byte {
- 	diceCmd, ok := eval.DiceCmds[op.Cmd.Cmd]
+ func ExecuteCommand(c *cmd.RedisCmd, client *comm.Client, store *dstore.Store, http bool) EvalResponse {
+ 	diceCmd, ok := DiceCmds[c.Cmd]
  	if !ok {
 +		// Temporary workaround for redis tcl commands
 +		// To run the tcl tests need to set env variable
@@ -57,10 +53,10 @@ index 9f48b73..3d43d6d 100644
 +
 +		// if env variable is set, then only ignore unknown commands
 +		if runTclTests {
-+			if _, exists := IgnoreCommands[op.Cmd.Cmd]; exists {
-+				return clientio.RespOK
++			if _, exists := IgnoreCommands[c.Cmd]; exists {
++				return EvalResponse{Result: clientio.RespOK, Error: nil}
 +			}
 +		}
- 		return diceerrors.NewErrWithFormattedMessage("unknown command '%s', with args beginning with: %s", op.Cmd.Cmd, strings.Join(op.Cmd.Args, " "))
+ 		return EvalResponse{Result: diceerrors.NewErrWithFormattedMessage("unknown command '%s', with args beginning with: %s", c.Cmd, strings.Join(c.Args, " ")), Error: nil}
  	}
  
