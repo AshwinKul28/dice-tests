@@ -576,13 +576,20 @@ start_server {tags {"expire"}} {
 
     test {EXPIRE with negative expiry} {
         r SET foo bar EX 100
-        assert_equal [r EXPIRE foo -10 LT] 1
-        assert_equal [r TTL foo] -2
+        set result [catch {r EXPIRE foo -10 LT} errMsg]
+        assert_equal $result 1
+        assert_equal $errMsg "ERR invalid expire time in 'expire' command"
+    
+        assert_equal [r TTL foo] 100
     } {}
 
     test {EXPIRE with negative expiry on a non-valitale key} {
         r SET foo bar
-        assert_equal [r EXPIRE foo -10 LT] 1
+
+        set result [catch {r EXPIRE foo -10 LT} errMsg]
+        assert_equal $result 1
+        assert_equal $errMsg "ERR invalid expire time in 'expire' command"
+        
         assert_equal [r TTL foo] -2
     } {}
 
