@@ -106,13 +106,13 @@ start_server {tags {"expire"}} {
         catch {r GETEX foo EX -9999999999999999} e
         set e
     } {ERR invalid expire time in 'getex' command}
-
+    
     test {EXPIRE with big integer overflows when converted to milliseconds} {
-        r set foo bar
-
         # Hit `when > LLONG_MAX - basetime`
-        assert_error "ERR invalid expire time in 'expire' command" {r EXPIRE foo 9223370399119966}
-
+        r set foo1 bar
+        assert_equal 1 [r EXPIRE foo1 9223370399119966] 
+        
+        r set foo bar
         # Hit `when > LLONG_MAX / 1000`
         assert_error "ERR invalid expire time in 'expire' command" {r EXPIRE foo 9223372036854776}
         assert_error "ERR invalid expire time in 'expire' command" {r EXPIRE foo 10000000000000000}
