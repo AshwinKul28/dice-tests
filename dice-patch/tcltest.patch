@@ -1,5 +1,5 @@
 diff --git a/internal/eval/execute.go b/internal/eval/execute.go
-index 24b582e..3d3a8e3 100644
+index e2ed180..977029b 100644
 --- a/internal/eval/execute.go
 +++ b/internal/eval/execute.go
 @@ -1,6 +1,8 @@
@@ -39,7 +39,7 @@ index 24b582e..3d3a8e3 100644
 +	"SETRANGE":  "ignore for tcl test",
 +}
 +
- func ExecuteCommand(c *cmd.RedisCmd, client *comm.Client, store *dstore.Store, httpOp, websocketOp bool) EvalResponse {
+ func ExecuteCommand(c *cmd.RedisCmd, client *comm.Client, store *dstore.Store, httpOp, websocketOp bool) *EvalResponse {
  	diceCmd, ok := DiceCmds[c.Cmd]
  	if !ok {
 +		// Temporary workaround for redis tcl commands
@@ -52,9 +52,9 @@ index 24b582e..3d3a8e3 100644
 +		// if env variable is set, then only ignore unknown commands
 +		if runTclTests {
 +			if _, exists := IgnoreCommands[c.Cmd]; exists {
-+				return EvalResponse{Result: clientio.RespOK, Error: nil}
++				return &EvalResponse{Result: clientio.RespOK, Error: nil}
 +			}
 +		}
- 		return EvalResponse{Result: diceerrors.NewErrWithFormattedMessage("unknown command '%s', with args beginning with: %s", c.Cmd, strings.Join(c.Args, " ")), Error: nil}
+ 		return &EvalResponse{Result: diceerrors.NewErrWithFormattedMessage("unknown command '%s', with args beginning with: %s", c.Cmd, strings.Join(c.Args, " ")), Error: nil}
  	}
  
